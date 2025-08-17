@@ -1,0 +1,6 @@
+.env
+__pycache__
+autotracker_venv/
+*.json
+handshake_cookies.pkl
+.DS_Store
