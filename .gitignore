@@ -4,3 +4,4 @@ autotracker_venv/
 *.json
 handshake_cookies.pkl
 .DS_Store
+client_secrets.json
