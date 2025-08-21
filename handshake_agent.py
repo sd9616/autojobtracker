@@ -11,6 +11,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from login_helpers import save_cookies, load_cookies
+from selenium.common.exceptions import TimeoutException
 # # Helper Functions
 # def save_cookies(driver, filename):
 #     with open(filename, 'wb') as filehandler:
@@ -79,30 +80,41 @@ class HandshakeJobAgent:
             save_cookies(self.driver, cookies_file)
             logger.info("Cookies saved for next login")
          
-    def scrape_job_listings(self, limit=10):
+    def scrape_job_listings(self, limit=25):
+        # TODO: Remove limit and scrap through all pages using url
+        
         base_domain = self.driver.current_url.split("/")[2]
         jobs_url = f"https://{base_domain}/job-search?page=1&per_page=25"
         self.driver.get(jobs_url)
         logger.info(f"Navigated to jobs page: {jobs_url}")
 
         # Wait for at least one job card
-        job_cards = WebDriverWait(self.driver, 15).until(
-            EC.presence_of_all_elements_located(
-                (By.CSS_SELECTOR, '[data-hook^="job-result-card"]')
+        try: 
+            job_cards = WebDriverWait(self.driver, 15).until(
+                EC.presence_of_all_elements_located(
+                    (By.CSS_SELECTOR, '[data-hook^="job-result-card |"]')
+                )
             )
-        )
-
+        except TimeoutException: 
+            logger.error("Timeout Exception while searching for job cards")
+            return 
+        
         results = []
         seen_ids = set()
         last_height = 0
-
+        
+        logger.info(f"Found {len(job_cards)} cards")
+        print([job.text for job in job_cards])
+        return
         while len(results) < limit:
             # Get all visible job cards
             job_cards = self.driver.find_elements(By.CSS_SELECTOR, '[data-hook^="job-result-card"]')
-
+            # print(job_cards)
+            # return
             for job in job_cards:
                 try:
                     job_id = job.get_attribute("data-hook").split("|")[1].strip()
+                    logger.info("job_id", job_id)
                     if job_id in seen_ids:
                         continue
                     seen_ids.add(job_id)
@@ -141,7 +153,7 @@ class HandshakeJobAgent:
 
         return results
             
-    def run_agent(self, search_keywords: List[str] = None, limit: int = 10):
+    def run_agent(self, search_keywords: List[str] = None):
         """Main method to run the job scraping agent"""
         try:
             logger.info("Starting Handshake Job Agent")
@@ -155,7 +167,7 @@ class HandshakeJobAgent:
 
             # Scrape job listings
             # jobs = self.scrape_job_listings(search_keywords, limit)
-            jobs = self.scrape_job_listings(limit)
+            jobs = self.scrape_job_listings()
             logger.info(f"Scraped {len(jobs)} jobs")
             
             # Update Google Sheet

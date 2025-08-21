@@ -4,6 +4,7 @@ from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from logger import logger
+import traceback
 
 def create_service(client_secret_file, api_name, api_version, *scopes, prefix=''): 
     CLIENT_SECRET_FILE = client_secret_file
@@ -27,19 +28,21 @@ def create_service(client_secret_file, api_name, api_version, *scopes, prefix=''
         
     if not creds or not creds.valid: 
         if creds and creds.expired and creds.refresh_token: 
-            creds.refresh(Request)
+            creds.refresh(Request())
         else: 
             logger.info("Installed App Flow")
             logger.info(f"scopes {SCOPES}")
+            logger.info(f"client_secret_file {CLIENT_SECRET_FILE}, type {type(CLIENT_SECRET_FILE)}")
             flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
             creds = flow.run_local_server(port=0)
         
         with open(os.path.join(working_dir, token_dir, token_file), 'w') as token: 
             token.write(creds.to_json())
+
     try: 
-        logger.info("Building service")
         service = build(API_SERVICE_NAME, API_VERSION, credentials=creds, static_discovery=False)
-        logger.log(API_SERVICE_NAME, API_VERSION, 'service created successfully')
+        logger.info(f"{API_SERVICE_NAME} {API_VERSION} service created successfully")
+
         return service
     except Exception as e: 
         print(e)
